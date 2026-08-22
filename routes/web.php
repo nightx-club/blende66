@@ -12,7 +12,7 @@ use App\Http\Controllers\WeddingQrAccessController;
 use App\Http\Controllers\WeddingUploadController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [MarketingController::class, 'home'])->name('marketing.home');
+Route::redirect('/', '/h/blende6')->name('marketing.home');
 Route::get('/ueber-mich', [MarketingController::class, 'about'])->name('marketing.about');
 Route::get('/portfolio', [MarketingController::class, 'portfolio'])->name('marketing.portfolio');
 Route::get('/shootings', [MarketingController::class, 'shootings'])->name('marketing.shootings');

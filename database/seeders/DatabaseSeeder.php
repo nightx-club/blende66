@@ -21,21 +21,24 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Wedding Admin', 'password' => 'Chef73schwaab!', 'is_admin' => true, 'email_verified_at' => now()]
         );
 
-        $wedding = Wedding::updateOrCreate(
-            ['slug' => 'lina-und-chris'],
-            [
-                'couple_names' => 'Blende6',
-                'wedding_date' => '2026-08-22',
-                'pin_hash' => Hash::make('220826'),
-                'welcome_text' => 'Sammelt mit uns die kleinen und großen Augenblicke dieses Tages – damit keine Erinnerung verloren geht.',
-                'is_active' => true,
-                'photo_max_mb' => 25,
-                'photo_batch_max' => 20,
-                'video_max_mb' => 100,
-                'video_max_seconds' => 180,
-                'video_batch_max' => 5,
-            ]
-        );
+        $wedding = Wedding::query()->where('slug', 'blende6')->first()
+            ?? Wedding::query()->where('couple_names', 'Blende6')->first()
+            ?? Wedding::query()->where('slug', 'lina-und-chris')->first()
+            ?? new Wedding;
+
+        $wedding->fill([
+            'slug' => 'blende6',
+            'couple_names' => 'Blende6',
+            'wedding_date' => '2026-08-22',
+            'pin_hash' => Hash::make('220826'),
+            'welcome_text' => 'Willkommen in der Blende6 Galerie. Entdeckt Fotos und Videos oder teilt eure eigenen Aufnahmen.',
+            'is_active' => true,
+            'photo_max_mb' => 25,
+            'photo_batch_max' => 20,
+            'video_max_mb' => 100,
+            'video_max_seconds' => 180,
+            'video_batch_max' => 5,
+        ])->save();
 
         $source = public_path('images/blende6/hero.jpg');
         if (! $wedding->cover_image_path && is_file($source)) {
@@ -47,7 +50,7 @@ class DatabaseSeeder extends Seeder
             $image->thumbnailImage(2000, 1400, true, true);
             $image->setImageFormat('webp');
             $image->setImageCompressionQuality(84);
-            $coverPath = 'covers/lina-und-chris.webp';
+            $coverPath = 'covers/blende6.webp';
             Storage::disk('local')->put($coverPath, $image->getImagesBlob());
             $image->clear();
             $wedding->update(['cover_image_path' => $coverPath]);
