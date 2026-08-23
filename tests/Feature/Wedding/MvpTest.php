@@ -19,11 +19,24 @@ class MvpTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_public_start_page_redirects_server_side_to_blende6_without_upload_anchor(): void
+    public function test_root_and_blende6_route_render_the_same_upload_first_page(): void
     {
-        $response = $this->get('/')->assertRedirect('/h/blende6');
+        $wedding = $this->wedding(['slug' => 'blende6', 'couple_names' => 'Blende6']);
+        $session = ["wedding_access.{$wedding->id}" => true];
 
-        $this->assertStringNotContainsString('#upload', $response->headers->get('Location'));
+        $this->get('/')->assertOk()->assertSee('Galerie-PIN');
+
+        foreach (['/', '/h/blende6'] as $url) {
+            $this->withSession($session)->get($url)
+                ->assertOk()
+                ->assertSeeInOrder(['id="upload-bereich"', 'Fotos & Videos hochladen', 'id="galerie"'], false)
+                ->assertSee('E-Mail-Adresse', false)
+                ->assertSee('QR-Code', false)
+                ->assertDontSee('>Fotogalerie<', false)
+                ->assertDontSee('Neueste zuerst', false)
+                ->assertDontSee('Die Galerie wartet auf eure Aufnahmen', false)
+                ->assertDontSee('href="#upload"', false);
+        }
     }
 
     public function test_guests_need_the_correct_pin_and_access_is_saved_in_session(): void
@@ -352,7 +365,7 @@ class MvpTest extends TestCase
             ->assertDontSeeText('Fremde Galerie');
     }
 
-    public function test_gallery_filters_photos_and_videos_and_renders_videos_as_players(): void
+    public function test_gallery_renders_photos_and_videos_without_the_removed_filter_header(): void
     {
         $wedding = $this->wedding(['slug' => 'blende6', 'couple_names' => 'Blende6']);
         $this->media($wedding, ['type' => 'photo', 'guest_name' => 'Foto Upload']);
@@ -361,22 +374,41 @@ class MvpTest extends TestCase
 
         $this->withSession($session)->get(route('weddings.show', $wedding))
             ->assertOk()
-            ->assertSeeText('Alle')
-            ->assertSeeText('Fotos')
-            ->assertSeeText('Videos')
             ->assertSee('<video', false)
             ->assertSeeText('Foto Upload')
-            ->assertSeeText('Video Upload');
-
-        $this->withSession($session)->get(route('weddings.show', ['wedding' => $wedding, 'type' => 'photo']))
-            ->assertOk()
+            ->assertSeeText('Video Upload')
             ->assertSee('data-media-guest="Foto Upload"', false)
-            ->assertDontSee('data-media-guest="Video Upload"', false);
-
-        $this->withSession($session)->get(route('weddings.show', ['wedding' => $wedding, 'type' => 'video']))
-            ->assertOk()
             ->assertSee('data-media-guest="Video Upload"', false)
-            ->assertDontSee('data-media-guest="Foto Upload"', false);
+            ->assertDontSee('Neueste zuerst', false)
+            ->assertDontSee('>Alle <span', false);
+    }
+
+    public function test_public_navigation_and_footer_contain_all_requested_destinations(): void
+    {
+        $wedding = $this->wedding(['slug' => 'blende6', 'couple_names' => 'Blende6']);
+
+        $response = $this->get(route('weddings.show', $wedding))->assertOk();
+
+        foreach (['Startseite', 'Galerie', 'Shootings', 'Portfolio', 'Über mich', 'Kontakt', 'Impressum', 'Datenschutz'] as $label) {
+            $response->assertSeeText($label);
+        }
+        $response
+            ->assertSee('href="'.url('/').'"', false)
+            ->assertSee('href="'.url('/h/blende6').'#galerie"', false)
+            ->assertSee('aria-controls="public-mobile-menu"', false)
+            ->assertSee('data-public-menu-toggle', false);
+    }
+
+    public function test_successful_upload_refresh_target_shows_confirmation_above_new_media(): void
+    {
+        $wedding = $this->wedding(['slug' => 'blende6', 'couple_names' => 'Blende6']);
+        $this->media($wedding, ['guest_name' => 'Neuer Upload']);
+
+        $this->withSession(["wedding_access.{$wedding->id}" => true])
+            ->get(route('weddings.show', $wedding).'?upload=success')
+            ->assertOk()
+            ->assertSeeText('Upload erfolgreich. Eure neuen Fotos und Videos sind jetzt in der Galerie sichtbar.')
+            ->assertSeeText('Neuer Upload');
     }
 
     public function test_gallery_paginates_after_twenty_four_files(): void

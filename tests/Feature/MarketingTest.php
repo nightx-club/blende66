@@ -2,14 +2,36 @@
 
 namespace Tests\Feature;
 
+use App\Models\Wedding;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class MarketingTest extends TestCase
 {
-    public function test_blende_6_homepage_redirects_to_the_public_gallery(): void
+    use RefreshDatabase;
+
+    public function test_blende_6_homepage_is_the_pin_protected_upload_gallery(): void
     {
+        Wedding::create([
+            'couple_names' => 'Blende6',
+            'slug' => 'blende6',
+            'wedding_date' => '2026-08-22',
+            'pin_hash' => Hash::make('123456'),
+            'welcome_text' => 'Willkommen',
+            'is_active' => true,
+            'photo_max_mb' => 25,
+            'photo_batch_max' => 20,
+            'video_max_mb' => 100,
+            'video_max_seconds' => 180,
+            'video_batch_max' => 5,
+        ]);
+
         $this->get(route('marketing.home'))
-            ->assertRedirect('/h/blende6');
+            ->assertOk()
+            ->assertSee('Galerie-PIN')
+            ->assertSeeText('Startseite')
+            ->assertSeeText('Datenschutz');
     }
 
     public function test_complete_local_portfolio_is_rendered(): void

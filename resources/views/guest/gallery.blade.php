@@ -1,5 +1,5 @@
 @php
-    $title = 'Blende6 – Fotogalerie';
+    $title = 'Blende6 – Fotos & Videos hochladen';
     $description = 'Die geschützte Blende6 Galerie für Fotos und Videos.';
     $lightboxItems = $media->where('type', 'photo')->map(function ($item) use ($wedding) {
         return [
@@ -15,20 +15,7 @@
 
 @section('content')
 <main class="min-h-screen bg-[#f7f3ed] text-[#2f3932]">
-    <header class="border-b border-[#e3ded6] bg-[#fffdf9]">
-        <div class="mx-auto flex min-h-24 max-w-7xl items-center justify-between gap-4 px-5 py-4 md:px-12">
-            <a href="{{ route('weddings.show', $wedding) }}" class="inline-flex items-center gap-4" aria-label="Blende6 Fotogalerie">
-                <img src="{{ asset('images/blende6-logo.png') }}" alt="Blende6" class="w-36 sm:w-48">
-                <span class="hidden border-l border-[#b8bdb6] pl-4 sm:block"><strong class="block font-serif text-xl font-normal">Blende6</strong><small class="mt-0.5 block text-[9px] uppercase tracking-[.18em] text-[#818981]">Foto- & Videogalerie</small></span>
-            </a>
-            @if($unlocked)
-                <nav class="flex items-center gap-2 text-xs font-semibold">
-                    <a href="#upload" class="rounded-full bg-[#465745] px-4 py-2.5 text-white">Fotos & Videos hochladen</a>
-                    <a href="#qr-code" class="hidden rounded-full border border-[#b7beb4] px-4 py-2.5 text-[#536150] sm:inline-flex">QR-Code</a>
-                </nav>
-            @endif
-        </div>
-    </header>
+    @include('partials.public-navigation')
 
     @if(!$unlocked)
         <section class="mx-auto max-w-lg px-5 py-16 md:py-24">
@@ -48,76 +35,7 @@
             </div>
         </section>
     @else
-        <section id="gallery" class="scroll-mt-4 bg-[#f1ede6] px-5 py-12 md:px-12 md:py-18">
-            <div class="mx-auto max-w-7xl">
-                @if(session('success'))<div class="mb-7 rounded-2xl bg-[#e8efe5] px-5 py-4 text-sm text-[#465745]">{{ session('success') }}</div>@endif
-                <div class="mb-9 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-                    <div>
-                        <p class="mb-3 text-[10px] font-semibold uppercase tracking-[.26em] text-[#7a8975]">Blende6</p>
-                        <h1 class="font-serif text-5xl leading-none tracking-tight md:text-7xl">Fotogalerie</h1>
-                        <p class="mt-4 max-w-xl text-sm leading-7 text-[#727b73]">{{ $wedding->welcome_text }}</p>
-                    </div>
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-                        <a href="#upload" class="inline-flex justify-center rounded-full bg-[#465745] px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-[#465745]/10">＋ Fotos & Videos hochladen</a>
-                        @if($counts['all'] > 0)<a href="{{ route('weddings.archive.download', $wedding) }}" class="inline-flex justify-center rounded-full border border-[#aeb7ac] px-5 py-3.5 text-xs font-semibold text-[#536150]">↓ Alle als ZIP herunterladen</a>@endif
-                    </div>
-                </div>
-
-                <div class="mb-7 flex flex-wrap items-center justify-between gap-4">
-                    <div class="flex rounded-full bg-[#e2ded7] p-1 text-xs font-semibold">
-                        <a href="{{ route('weddings.show', $wedding) }}#gallery" class="rounded-full px-5 py-2.5 {{ $filter === 'all' ? 'bg-[#465745] text-white' : 'text-[#626c63]' }}">Alle <span class="ml-1 opacity-60">{{ $counts['all'] }}</span></a>
-                        <a href="{{ route('weddings.show', ['wedding' => $wedding, 'type' => 'photo']) }}#gallery" class="rounded-full px-5 py-2.5 {{ $filter === 'photo' ? 'bg-[#465745] text-white' : 'text-[#626c63]' }}">Fotos <span class="ml-1 opacity-60">{{ $counts['photo'] }}</span></a>
-                        <a href="{{ route('weddings.show', ['wedding' => $wedding, 'type' => 'video']) }}#gallery" class="rounded-full px-5 py-2.5 {{ $filter === 'video' ? 'bg-[#465745] text-white' : 'text-[#626c63]' }}">Videos <span class="ml-1 opacity-60">{{ $counts['video'] }}</span></a>
-                    </div>
-                    <p class="text-[10px] uppercase tracking-[.18em] text-[#868d86]">Neueste zuerst</p>
-                </div>
-
-                @if($guestGalleries->isNotEmpty())
-                    <div class="mb-8 rounded-2xl border border-[#d9d5ce] bg-[#fffdf9] p-4 sm:p-5">
-                        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                            <div><p class="text-[9px] font-semibold uppercase tracking-[.22em] text-[#7a8975]">Galerien pro Person</p><p class="mt-1 text-xs text-[#7e867e]">Jede persönliche Galerie separat als ZIP herunterladen.</p></div>
-                            <div class="flex flex-wrap gap-2">
-                                @foreach($guestGalleries as $guestGallery)
-                                    <a href="{{ route('weddings.guest-album.download', ['wedding' => $wedding, 'guest' => $guestGallery->name]) }}" class="rounded-full bg-[#e8eee5] px-4 py-2.5 text-xs font-semibold text-[#50604f]">↓ {{ $guestGallery->name }} als ZIP <span class="ml-1 opacity-55">{{ $guestGallery->files_count }}</span></a>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
-                @endif
-
-                @if($media->isEmpty())
-                    <div class="rounded-[2rem] border border-dashed border-[#aeb7ac] bg-[#fffdf9] px-6 py-20 text-center">
-                        <p class="text-[10px] font-semibold uppercase tracking-[.22em] text-[#7a8975]">Noch keine Dateien</p>
-                        <h2 class="mt-3 font-serif text-4xl">Die Galerie wartet auf eure Aufnahmen</h2>
-                        <a href="#upload" class="mt-7 inline-flex rounded-full bg-[#465745] px-6 py-3.5 text-sm font-semibold text-white">Fotos & Videos hochladen</a>
-                    </div>
-                @else
-                    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-gallery-grid>
-                        @foreach($media as $item)
-                            <article data-media-guest="{{ $item->guest_name ?: 'Blende6' }}" class="group overflow-hidden rounded-2xl border border-[#ded8ce] bg-[#fffdf9] shadow-[0_12px_34px_rgba(55,65,57,.06)]">
-                                @if($item->type === 'photo')
-                                    <button type="button" class="block w-full overflow-hidden" data-lightbox-id="{{ $item->id }}" aria-label="Foto groß öffnen">
-                                        <img src="{{ route('weddings.media.thumbnail', [$wedding, $item]) }}" loading="lazy" decoding="async" alt="Foto in der Blende6 Galerie" class="aspect-[4/3] w-full bg-[#e4e9e2] object-cover transition duration-500 group-hover:scale-[1.025]">
-                                    </button>
-                                @else
-                                    <video src="{{ route('weddings.media.view', [$wedding, $item]) }}" controls preload="metadata" playsinline class="aspect-[4/3] w-full bg-[#263229] object-contain" aria-label="Video in der Blende6 Galerie"></video>
-                                @endif
-                                <div class="flex items-center justify-between gap-3 px-4 py-3">
-                                    <div class="min-w-0"><strong class="block truncate text-[11px] font-semibold text-[#566158]">{{ $item->guest_name ?: 'Blende6' }}</strong><span class="mt-0.5 block text-[9px] text-[#919791]">{{ $item->created_at->format('d.m.Y · H:i') }} Uhr</span></div>
-                                    <a href="{{ route('weddings.media.download', [$wedding, $item]) }}" class="shrink-0 text-xs font-semibold text-[#657161]">↓ Original</a>
-                                </div>
-                            </article>
-                        @endforeach
-                    </div>
-
-                    @if($mediaPage->hasPages())
-                        <div class="mt-10">{{ $mediaPage->fragment('gallery')->onEachSide(1)->links() }}</div>
-                    @endif
-                @endif
-            </div>
-        </section>
-
-        <section id="upload" class="mx-auto grid max-w-7xl scroll-mt-4 gap-6 px-5 py-12 md:px-12 md:py-18 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <section id="upload-bereich" class="mx-auto grid max-w-7xl gap-6 px-5 py-10 md:px-12 md:py-14 xl:grid-cols-[minmax(0,1fr)_340px]">
             <div class="rounded-[2rem] border border-[#ded8ce] bg-[#fffdf9] p-6 shadow-[0_20px_60px_rgba(55,65,57,.08)] md:p-9">
                 <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
                     <div><p class="mb-2 text-[10px] font-semibold uppercase tracking-[.24em] text-[#7a8975]">Direkter Upload</p><h2 class="font-serif text-4xl tracking-tight md:text-5xl">Fotos & Videos hochladen</h2></div>
@@ -150,6 +68,50 @@
             </aside>
         </section>
 
+        <section id="galerie" class="scroll-mt-24 border-t border-[#e3ded6] bg-[#f1ede6] px-5 py-10 md:px-12 md:py-14">
+            <div class="mx-auto max-w-7xl">
+                @if(request()->string('upload')->toString() === 'success')
+                    <div class="mb-7 rounded-2xl bg-[#e3eee1] px-5 py-4 text-sm font-semibold text-[#405440]" role="status">Upload erfolgreich. Eure neuen Fotos und Videos sind jetzt in der Galerie sichtbar.</div>
+                @endif
+
+                @if($media->isEmpty())
+                    <p class="py-3 text-center text-xs text-[#858d84]">Noch keine Fotos oder Videos hochgeladen.</p>
+                @else
+                    <div class="mb-7 flex flex-col gap-4 rounded-2xl border border-[#d9d5ce] bg-[#fffdf9] p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+                        <p class="text-xs text-[#7e867e]">{{ $mediaPage->total() }} {{ $mediaPage->total() === 1 ? 'Aufnahme' : 'Aufnahmen' }}</p>
+                        <div class="flex flex-wrap gap-2">
+                            <a href="{{ route('weddings.archive.download', $wedding) }}" class="rounded-full bg-[#465745] px-4 py-2.5 text-xs font-semibold text-white">↓ Alle als ZIP herunterladen</a>
+                            @foreach($guestGalleries as $guestGallery)
+                                <a href="{{ route('weddings.guest-album.download', ['wedding' => $wedding, 'guest' => $guestGallery->name]) }}" class="rounded-full bg-[#e8eee5] px-4 py-2.5 text-xs font-semibold text-[#50604f]">↓ {{ $guestGallery->name }} als ZIP <span class="ml-1 opacity-55">{{ $guestGallery->files_count }}</span></a>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-gallery-grid>
+                        @foreach($media as $item)
+                            <article data-media-guest="{{ $item->guest_name ?: 'Blende6' }}" class="group overflow-hidden rounded-2xl border border-[#ded8ce] bg-[#fffdf9] shadow-[0_12px_34px_rgba(55,65,57,.06)]">
+                                @if($item->type === 'photo')
+                                    <button type="button" class="block w-full overflow-hidden" data-lightbox-id="{{ $item->id }}" aria-label="Foto groß öffnen">
+                                        <img src="{{ route('weddings.media.thumbnail', [$wedding, $item]) }}" loading="lazy" decoding="async" alt="Foto in der Blende6 Galerie" class="aspect-[4/3] w-full bg-[#e4e9e2] object-cover transition duration-500 group-hover:scale-[1.025]">
+                                    </button>
+                                @else
+                                    <video src="{{ route('weddings.media.view', [$wedding, $item]) }}" controls preload="metadata" playsinline class="aspect-[4/3] w-full bg-[#263229] object-contain" aria-label="Video in der Blende6 Galerie"></video>
+                                @endif
+                                <div class="flex items-center justify-between gap-3 px-4 py-3">
+                                    <div class="min-w-0"><strong class="block truncate text-[11px] font-semibold text-[#566158]">{{ $item->guest_name ?: 'Blende6' }}</strong><span class="mt-0.5 block text-[9px] text-[#919791]">{{ $item->created_at->format('d.m.Y · H:i') }} Uhr</span></div>
+                                    <a href="{{ route('weddings.media.download', [$wedding, $item]) }}" class="shrink-0 text-xs font-semibold text-[#657161]">↓ Original</a>
+                                </div>
+                            </article>
+                        @endforeach
+                    </div>
+
+                    @if($mediaPage->hasPages())
+                        <div class="mt-10">{{ $mediaPage->fragment('galerie')->onEachSide(1)->links() }}</div>
+                    @endif
+                @endif
+            </div>
+        </section>
+
         <div id="lightbox" class="fixed inset-0 z-[60] hidden bg-[#172019]/96 p-4 text-white backdrop-blur-lg md:p-7" role="dialog" aria-modal="true" aria-labelledby="lightbox-title">
             <button type="button" id="lightbox-close" class="absolute right-4 top-4 z-20 grid size-11 place-items-center rounded-full bg-white/15 text-3xl md:right-7 md:top-6">×</button>
             <div class="mx-auto flex h-full max-w-7xl flex-col">
@@ -159,7 +121,7 @@
         </div>
     @endif
 
-    <footer class="bg-[#435243] px-6 py-12 text-center text-white"><span class="mx-auto mb-6 inline-flex rounded-2xl bg-white/90 px-5 py-3"><img src="{{ asset('images/blende6-logo.png') }}" alt="Blende6" class="w-44"></span><p class="font-serif text-2xl">Blende6</p><p class="mt-2 text-[9px] uppercase tracking-[.22em] text-white/60">Fotogalerie · Upload · Download</p></footer>
+    @include('partials.public-footer')
 </main>
 @endsection
 
@@ -225,7 +187,7 @@
         uploading = false; render();
         if (files.every(item => item.status === 'success')) {
             startHelp.textContent = 'Upload abgeschlossen. Die Galerie wird aktualisiert …';
-            window.setTimeout(() => window.location.assign(@json(route('weddings.show', $wedding).'#gallery')), 350);
+            window.setTimeout(() => window.location.assign(@json(route('weddings.show', $wedding).'?upload=success#galerie')), 350);
         }
     });
     function upload(item, batch) { return new Promise(resolve => {
