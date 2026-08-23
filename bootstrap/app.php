@@ -15,6 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(fn () => route('admin.login'));
+        $middleware->redirectUsersTo(fn (Request $request) => $request->is('admin/*')
+            ? route('admin.weddings.index')
+            : '/');
         $middleware->alias([
             'admin' => EnsureAdmin::class,
             'wedding.access' => EnsureWeddingAccess::class,

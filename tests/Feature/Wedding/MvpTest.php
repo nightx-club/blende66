@@ -178,11 +178,13 @@ class MvpTest extends TestCase
 
     public function test_admin_routes_require_an_admin_account(): void
     {
+        $this->get(route('admin.login'))->assertOk()->assertSeeText('Willkommen zurück');
         $this->get(route('admin.weddings.index'))->assertRedirect(route('admin.login'));
         $user = User::factory()->create(['is_admin' => false]);
         $this->actingAs($user)->get(route('admin.weddings.index'))->assertForbidden();
         $admin = User::factory()->create(['is_admin' => true]);
         $this->actingAs($admin)->get(route('admin.weddings.index'))->assertOk()->assertSeeText('Hochzeiten & Events');
+        $this->actingAs($admin)->get(route('admin.login'))->assertRedirect(route('admin.weddings.index'));
     }
 
     public function test_requested_master_admin_credentials_can_log_in(): void

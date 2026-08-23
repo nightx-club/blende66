@@ -17,7 +17,7 @@
                 <a href="{{ route('marketing.about') }}">Über mich</a><a href="{{ route('marketing.contact') }}">Kontakt</a>
                 <a href="{{ route('marketing.imprint') }}">Impressum</a><a href="{{ route('marketing.privacy') }}">Datenschutz</a>
             </div>
-            <a href="{{ route('admin.login') }}" class="mt-5 inline-block text-xs text-white/45">Master-Admin</a>
+            <a href="{{ route('admin.login') }}" class="mt-6 inline-flex items-center rounded-full border border-white/35 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/70 hover:bg-white/10">Admin-Login</a>
         </div>
     </div>
     <div class="border-t border-white/10 px-6 py-5 text-center text-[9px] uppercase tracking-[.18em] text-white/45">© {{ date('Y') }} Blende6 Fotografie · Lina-Theresa Dick</div>
