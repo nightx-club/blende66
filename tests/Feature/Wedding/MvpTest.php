@@ -22,12 +22,8 @@ class MvpTest extends TestCase
     public function test_root_and_blende6_route_render_the_same_upload_first_page(): void
     {
         $wedding = $this->wedding(['slug' => 'blende6', 'couple_names' => 'Blende6']);
-        $session = ["wedding_access.{$wedding->id}" => true];
-
-        $this->get('/')->assertOk()->assertSee('Galerie-PIN');
-
         foreach (['/', '/h/blende6'] as $url) {
-            $this->withSession($session)->get($url)
+            $this->get($url)
                 ->assertOk()
                 ->assertSeeInOrder(['id="upload-bereich"', 'Fotos & Videos hochladen', 'id="galerie"'], false)
                 ->assertSee('E-Mail-Adresse', false)
@@ -39,22 +35,13 @@ class MvpTest extends TestCase
         }
     }
 
-    public function test_guests_need_the_correct_pin_and_access_is_saved_in_session(): void
+    public function test_guests_can_open_the_gallery_without_a_pin(): void
     {
         $wedding = $this->wedding();
-        $this->get(route('weddings.show', $wedding))->assertOk()->assertSee('Galerie-PIN');
-        $this->post(route('weddings.unlock', $wedding), ['pin' => '0000'])->assertSessionHasErrors('pin');
-        $this->post(route('weddings.unlock', $wedding), ['pin' => '123456'])->assertRedirect(route('weddings.show', $wedding))->assertSessionHas("wedding_access.{$wedding->id}", true);
-        $this->get(route('weddings.show', $wedding))->assertOk()->assertSee('Fotos & Videos hochladen', false);
-    }
-
-    public function test_pin_attempts_are_rate_limited(): void
-    {
-        $wedding = $this->wedding(['slug' => 'rate-limit']);
-        for ($attempt = 0; $attempt < 6; $attempt++) {
-            $this->post(route('weddings.unlock', $wedding), ['pin' => '0000']);
-        }
-        $this->post(route('weddings.unlock', $wedding), ['pin' => '0000'])->assertTooManyRequests();
+        $this->get(route('weddings.show', $wedding))
+            ->assertOk()
+            ->assertSee('Fotos & Videos hochladen', false)
+            ->assertDontSee('Galerie-PIN');
     }
 
     public function test_media_cannot_be_accessed_through_another_wedding(): void
@@ -323,13 +310,12 @@ class MvpTest extends TestCase
             ->assertSee('Fotos & Videos hochladen', false);
     }
 
-    public function test_unlocked_guests_can_see_and_download_the_event_qr_code(): void
+    public function test_guests_can_see_and_download_the_event_qr_code(): void
     {
         $wedding = $this->wedding();
 
-        $this->get(route('weddings.qr', $wedding))->assertRedirect(route('weddings.show', $wedding));
-        $this->withSession(["wedding_access.{$wedding->id}" => true])
-            ->get(route('weddings.qr.download', $wedding))
+        $this->get(route('weddings.qr', $wedding))->assertOk()->assertHeader('content-type', 'image/png');
+        $this->get(route('weddings.qr.download', $wedding))
             ->assertOk()
             ->assertHeader('content-type', 'image/png')
             ->assertDownload(Str::slug($wedding->couple_names).'-qr-code.png');
@@ -347,7 +333,7 @@ class MvpTest extends TestCase
         $this->assertDatabaseHas('media', ['id' => $media->id, 'wedding_id' => $wedding->id]);
         $this->assertDatabaseCount('weddings', 1);
         $this->get('/h/lina-und-chris')->assertNotFound();
-        $this->get('/h/blende6')->assertOk()->assertSeeText('Blende6 öffnen');
+        $this->get('/h/blende6')->assertOk()->assertSeeText('Fotos & Videos hochladen');
     }
 
     public function test_gallery_shows_newest_published_media_first_and_never_media_from_another_gallery(): void

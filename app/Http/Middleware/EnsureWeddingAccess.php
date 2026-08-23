@@ -15,13 +15,6 @@ class EnsureWeddingAccess
         if (! $wedding instanceof Wedding || ! $wedding->is_active) {
             abort(404);
         }
-        if ($request->user()?->is_admin) {
-            return $next($request);
-        }
-        if (! (bool) $request->session()->get("wedding_access.{$wedding->id}", false)) {
-            return redirect()->route('weddings.show', $wedding)->with('error', 'Bitte gebt zuerst die Galerie-PIN ein.');
-        }
-
         return $next($request);
     }
 }

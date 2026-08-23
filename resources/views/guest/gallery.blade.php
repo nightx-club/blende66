@@ -17,25 +17,7 @@
 <main class="min-h-screen bg-[#f7f3ed] text-[#2f3932]">
     @include('partials.public-navigation')
 
-    @if(!$unlocked)
-        <section class="mx-auto max-w-lg px-5 py-16 md:py-24">
-            <div class="rounded-[2rem] border border-[#ded8ce] bg-white p-7 text-center shadow-[0_25px_80px_rgba(55,65,57,.15)] md:p-11">
-                <div class="mx-auto mb-6 grid size-14 place-items-center rounded-full border border-[#aeb8aa] font-serif text-[#5b6a58]">B6</div>
-                <p class="mb-2 text-[10px] font-semibold uppercase tracking-[.24em] text-[#7d8978]">Geschützte Galerie</p>
-                <h1 class="font-serif text-4xl tracking-tight">Blende6 öffnen</h1>
-                <p class="mx-auto mt-3 max-w-sm text-sm leading-6 text-[#788078]">Gebt eure Galerie-PIN ein. Ein persönlicher QR-Code öffnet die Galerie direkt.</p>
-                <form method="POST" action="{{ route('weddings.unlock', $wedding) }}" class="mt-7">
-                    @csrf
-                    <label for="pin" class="sr-only">Galerie-PIN</label>
-                    <input id="pin" name="pin" value="{{ old('pin') }}" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="• • • • • •" class="w-full rounded-2xl border border-[#d8d5ce] bg-[#faf7f2] px-4 py-4 text-center text-xl tracking-[.45em] outline-none transition focus:border-[#72806d] focus:ring-4 focus:ring-[#72806d]/10">
-                    @error('pin')<p class="mt-3 text-sm text-[#a64f44]">{{ $message }}</p>@enderror
-                    <button class="mt-5 w-full rounded-full bg-[#465745] px-6 py-4 text-sm font-semibold text-white">Galerie öffnen</button>
-                </form>
-                <p class="mt-5 text-[10px] text-[#929891]">Der Zugang bleibt auf diesem Gerät gespeichert.</p>
-            </div>
-        </section>
-    @else
-        <section id="upload-bereich" class="mx-auto grid max-w-7xl gap-6 px-5 py-10 md:px-12 md:py-14 xl:grid-cols-[minmax(0,1fr)_340px]">
+    <section id="upload-bereich" class="mx-auto grid max-w-7xl gap-6 px-5 py-10 md:px-12 md:py-14 xl:grid-cols-[minmax(0,1fr)_340px]">
             <div class="rounded-[2rem] border border-[#ded8ce] bg-[#fffdf9] p-6 shadow-[0_20px_60px_rgba(55,65,57,.08)] md:p-9">
                 <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
                     <div><p class="mb-2 text-[10px] font-semibold uppercase tracking-[.24em] text-[#7a8975]">Direkter Upload</p><h2 class="font-serif text-4xl tracking-tight md:text-5xl">Fotos & Videos hochladen</h2></div>
@@ -66,7 +48,7 @@
                 <p class="mt-5 text-xs leading-6 text-white/70">Der QR-Code öffnet diese Galerie direkt mit Upload- und Download-Zugang.</p>
                 <a href="{{ route('weddings.qr.download', $wedding) }}" class="mt-6 inline-flex w-full justify-center rounded-full bg-white px-5 py-3.5 text-sm font-semibold text-[#465745]">↓ QR-Code herunterladen</a>
             </aside>
-        </section>
+    </section>
 
         <section id="galerie" class="scroll-mt-24 border-t border-[#e3ded6] bg-[#f1ede6] px-5 py-10 md:px-12 md:py-14">
             <div class="mx-auto max-w-7xl">
@@ -119,13 +101,10 @@
                 <div class="mx-auto mt-4 w-full max-w-5xl"><div class="flex items-center justify-between gap-4"><div><p id="lightbox-title" class="font-serif text-2xl"></p><p id="lightbox-count" class="mt-1 text-[10px] text-white/55"></p></div><a id="lightbox-download" href="#" class="rounded-full bg-white px-4 py-2.5 text-xs font-semibold text-[#465745]">↓ Original</a></div><div id="lightbox-thumbs" class="mt-4 flex gap-2 overflow-x-auto pb-1"></div></div>
             </div>
         </div>
-    @endif
-
     @include('partials.public-footer')
 </main>
 @endsection
 
-@if($unlocked)
 @push('scripts')
 <script>
 (() => {
@@ -228,4 +207,3 @@
 })();
 </script>
 @endpush
-@endif

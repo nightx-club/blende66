@@ -11,7 +11,7 @@ class MarketingTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_blende_6_homepage_is_the_pin_protected_upload_gallery(): void
+    public function test_blende_6_homepage_is_the_open_upload_gallery(): void
     {
         Wedding::create([
             'couple_names' => 'Blende6',
@@ -29,7 +29,8 @@ class MarketingTest extends TestCase
 
         $this->get(route('marketing.home'))
             ->assertOk()
-            ->assertSee('Galerie-PIN')
+            ->assertSee('Fotos & Videos hochladen')
+            ->assertDontSee('Galerie-PIN')
             ->assertSeeText('Startseite')
             ->assertSeeText('Datenschutz');
     }

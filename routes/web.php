@@ -31,7 +31,6 @@ Route::get('/g/{token}', WeddingQrAccessController::class)
 
 Route::prefix('h/{wedding:slug}')->group(function () {
     Route::get('/', [WeddingGuestController::class, 'show'])->name('weddings.show');
-    Route::post('/pin', [WeddingGuestController::class, 'unlock'])->middleware('throttle:6,1')->name('weddings.unlock');
     Route::get('/cover', [WeddingMediaController::class, 'cover'])->name('weddings.cover');
 
     Route::middleware('wedding.access')->group(function () {
