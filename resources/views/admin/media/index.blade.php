@@ -15,29 +15,34 @@
 
 <section class="mt-10">
     <div class="mb-5 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
-        <div><p class="mb-2 text-[10px] font-semibold uppercase tracking-[.24em] text-[#7b8878]">Master Admin</p><h2 class="font-serif text-3xl">Uploads nach Gästen</h2></div>
-        <p class="text-xs text-[#858c84]">E-Mail-Adressen sind nur hier sichtbar.</p>
+        <div><p class="mb-2 text-[10px] font-semibold uppercase tracking-[.24em] text-[#7b8878]">Master Admin</p><h2 class="font-serif text-3xl">Alben nach Personen</h2></div>
+        <p class="text-xs text-[#858c84]">Alle Uploads einer Person werden zu einem Album zusammengefasst.</p>
     </div>
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        @forelse($uploadSessions as $upload)
+        @forelse($guestAlbums as $album)
             <article class="rounded-2xl border border-[#ded8ce] bg-[#fffdf9] p-5">
                 <div class="flex items-start justify-between gap-4">
                     <div class="min-w-0">
-                        <strong class="block truncate text-sm text-[#354238]">{{ $upload->guest_name ?: 'Gast ohne Namen' }}</strong>
-                        <a href="mailto:{{ $upload->guest_email }}" class="mt-1 block truncate text-xs text-[#657161]">{{ $upload->guest_email ?: 'Keine E-Mail (älterer Upload)' }}</a>
+                        <strong class="block truncate text-sm text-[#354238]">Album von {{ $album->name }}</strong>
+                        @if($album->guest_email)<a href="mailto:{{ $album->guest_email }}" class="mt-1 block truncate text-xs text-[#657161]">{{ $album->guest_email }}</a>@else<p class="mt-1 truncate text-xs text-[#858c84]">Keine E-Mail hinterlegt</p>@endif
                     </div>
-                    <span class="rounded-full bg-[#edf1ea] px-3 py-1 text-[9px] font-semibold text-[#536150]">{{ $upload->media_count }} Dateien</span>
+                    <span class="rounded-full bg-[#edf1ea] px-3 py-1 text-[9px] font-semibold text-[#536150]">{{ $album->media_count }} Dateien</span>
                 </div>
-                <p class="mt-4 text-[10px] leading-5 text-[#858c84]">{{ $upload->photo_count_actual }} Fotos · {{ $upload->video_count_actual }} Videos · {{ number_format(($upload->storage_bytes ?? 0)/1024/1024, 1, ',', '.') }} MB<br>{{ $upload->created_at->format('d.m.Y H:i') }} Uhr</p>
-                <form method="POST" action="{{ route('admin.weddings.uploads.destroy', [$wedding, $upload]) }}" class="mt-4 border-t border-[#e8e3da] pt-4">
+                <p class="mt-4 text-[10px] leading-5 text-[#858c84]">{{ $album->photo_count }} Fotos · {{ $album->video_count }} Videos · {{ number_format(($album->storage_bytes ?? 0)/1024/1024, 1, ',', '.') }} MB<br>Zuletzt: {{ \Illuminate\Support\Carbon::parse($album->latest_upload_at)->format('d.m.Y H:i') }} Uhr</p>
+                <form method="POST" action="{{ route('admin.weddings.albums.destroy', $wedding) }}" class="mt-4 border-t border-[#e8e3da] pt-4">
                     @csrf @method('DELETE')
-                    <button onclick="return confirm(@js('Den gesamten Upload von '.($upload->guest_name ?: $upload->guest_email ?: 'diesem Gast').' mit '.$upload->media_count.' Dateien dauerhaft löschen?'))" class="text-xs font-semibold text-[#a24e44]">Gesamten Upload löschen</button>
+                    <input type="hidden" name="guest_name" value="{{ $album->name }}">
+                    <button onclick="return confirm(@js('Das komplette Album von '.$album->name.' mit '.$album->media_count.' Dateien dauerhaft löschen?'))" class="text-xs font-semibold text-[#a24e44]">Komplettes Album löschen</button>
                 </form>
             </article>
         @empty
-            <div class="col-span-full rounded-2xl border border-dashed border-[#bbc3b8] p-8 text-center text-sm text-[#7f877e]">Noch keine zugeordneten Gast-Uploads vorhanden.</div>
+            <div class="col-span-full rounded-2xl border border-dashed border-[#bbc3b8] p-8 text-center text-sm text-[#7f877e]">Noch keine Personen-Alben vorhanden.</div>
         @endforelse
     </div>
+</section>
+
+<section class="mt-10">
+    <div class="mb-5"><p class="mb-2 text-[10px] font-semibold uppercase tracking-[.24em] text-[#7b8878]">Einzelverwaltung</p><h2 class="font-serif text-3xl">Einzelne Fotos & Videos</h2></div>
 </section>
 
 <form method="POST" action="{{ route('admin.weddings.media.bulk', $wedding) }}" class="mt-8" id="bulk-form">

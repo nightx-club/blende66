@@ -17,7 +17,7 @@ class WeddingArchiveController extends Controller
     {
         return $this->download(
             $wedding->media()->where('is_published', true)->oldest(),
-            $wedding->slug.'-alle-erinnerungen.zip'
+            $wedding->slug.'-alle-galerien.zip'
         );
     }
 
@@ -27,7 +27,7 @@ class WeddingArchiveController extends Controller
 
         return $this->download(
             $wedding->media()->where('is_published', true)->whereRaw('LOWER(guest_name) = ?', [mb_strtolower($data['guest'])])->oldest(),
-            $wedding->slug.'-'.Str::slug($data['guest']).'-album.zip'
+            $wedding->slug.'-'.Str::slug($data['guest']).'-galerie.zip'
         );
     }
 

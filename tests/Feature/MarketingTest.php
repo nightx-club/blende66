@@ -6,14 +6,10 @@ use Tests\TestCase;
 
 class MarketingTest extends TestCase
 {
-    public function test_blende_6_homepage_uses_local_brand_content(): void
+    public function test_blende_6_homepage_redirects_to_the_public_gallery(): void
     {
         $this->get(route('marketing.home'))
-            ->assertOk()
-            ->assertSee('Echte Momente.')
-            ->assertSee('Lina-Theresa Dick')
-            ->assertSee(asset('images/blende6/hero.jpg'), false)
-            ->assertSee(asset('images/blende6-logo.png'), false);
+            ->assertRedirect('/h/blende6');
     }
 
     public function test_complete_local_portfolio_is_rendered(): void

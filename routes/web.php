@@ -58,9 +58,10 @@ Route::prefix('admin')->group(function () {
 
     Route::middleware(['auth', 'admin'])->name('admin.')->group(function () {
         Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
-        Route::resource('weddings', AdminWeddingController::class)->except(['show', 'destroy']);
+        Route::resource('weddings', AdminWeddingController::class)->except(['show']);
         Route::get('/weddings/{wedding:slug}/media', [AdminMediaController::class, 'index'])->name('weddings.media.index');
         Route::delete('/weddings/{wedding:slug}/media/{media}', [AdminMediaController::class, 'destroy'])->name('weddings.media.destroy');
+        Route::delete('/weddings/{wedding:slug}/albums', [AdminMediaController::class, 'destroyGuestAlbum'])->name('weddings.albums.destroy');
         Route::delete('/weddings/{wedding:slug}/uploads/{uploadSession}', [AdminMediaController::class, 'destroyUpload'])->name('weddings.uploads.destroy');
         Route::post('/weddings/{wedding:slug}/media/bulk', [AdminMediaController::class, 'bulk'])->name('weddings.media.bulk');
         Route::get('/weddings/{wedding:slug}/media.zip', [AdminMediaController::class, 'zip'])->name('weddings.media.zip');

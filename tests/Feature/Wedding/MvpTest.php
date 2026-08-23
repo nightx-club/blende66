@@ -6,21 +6,30 @@ use App\Models\Media;
 use App\Models\UploadSession;
 use App\Models\User;
 use App\Models\Wedding;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
+use ZipArchive;
 
 class MvpTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_public_start_page_redirects_server_side_to_blende6_without_upload_anchor(): void
+    {
+        $response = $this->get('/')->assertRedirect('/h/blende6');
+
+        $this->assertStringNotContainsString('#upload', $response->headers->get('Location'));
+    }
+
     public function test_guests_need_the_correct_pin_and_access_is_saved_in_session(): void
     {
         $wedding = $this->wedding();
-        $this->get(route('weddings.show', $wedding))->assertOk()->assertSee('Hochzeits-PIN');
+        $this->get(route('weddings.show', $wedding))->assertOk()->assertSee('Galerie-PIN');
         $this->post(route('weddings.unlock', $wedding), ['pin' => '0000'])->assertSessionHasErrors('pin');
         $this->post(route('weddings.unlock', $wedding), ['pin' => '123456'])->assertRedirect(route('weddings.show', $wedding))->assertSessionHas("wedding_access.{$wedding->id}", true);
         $this->get(route('weddings.show', $wedding))->assertOk()->assertSee('Fotos & Videos hochladen', false);
@@ -62,6 +71,10 @@ class MvpTest extends TestCase
         Storage::disk('local')->assertExists($media->original_path);
         Storage::disk('local')->assertExists($media->gallery_path);
         Storage::disk('local')->assertExists($media->thumbnail_path);
+        $this->withSession(["wedding_access.{$wedding->id}" => true])
+            ->get(route('weddings.show', $wedding))
+            ->assertOk()
+            ->assertSeeText('Anna');
     }
 
     public function test_oversized_video_is_rejected_server_side(): void
@@ -137,7 +150,7 @@ class MvpTest extends TestCase
             ->get(route('admin.weddings.media.index', $wedding))
             ->assertOk()
             ->assertSee('anna@example.com')
-            ->assertSee('Gesamten Upload löschen');
+            ->assertSee('Komplettes Album löschen');
 
         $this->actingAs($admin)
             ->delete(route('admin.weddings.uploads.destroy', [$wedding, $upload]))
@@ -157,6 +170,108 @@ class MvpTest extends TestCase
         $this->actingAs($user)->get(route('admin.weddings.index'))->assertForbidden();
         $admin = User::factory()->create(['is_admin' => true]);
         $this->actingAs($admin)->get(route('admin.weddings.index'))->assertOk()->assertSeeText('Hochzeiten & Events');
+    }
+
+    public function test_requested_master_admin_credentials_can_log_in(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+
+        $this->post(route('admin.login.store'), [
+            'email' => 'info@blende6.de',
+            'password' => 'Chef73schwaab!',
+        ])->assertRedirect(route('admin.weddings.index'));
+
+        $this->assertAuthenticatedAs(User::query()->where('email', 'info@blende6.de')->firstOrFail());
+        $this->assertDatabaseMissing('users', ['email' => 'info@blende-6.de']);
+    }
+
+    public function test_master_admin_can_delete_a_complete_guest_album_across_multiple_uploads(): void
+    {
+        Storage::fake('local');
+        $admin = User::factory()->create(['is_admin' => true]);
+        $wedding = $this->wedding(['slug' => 'blende6']);
+        $otherWedding = $this->wedding(['slug' => 'other-gallery']);
+        $firstUpload = $this->uploadSession($wedding, 'Anna');
+        $secondUpload = $this->uploadSession($wedding, ' anna ');
+        $foreignUpload = $this->uploadSession($otherWedding, 'Anna');
+        $first = $this->media($wedding, ['upload_session_id' => $firstUpload->id, 'guest_name' => 'Anna']);
+        $second = $this->media($wedding, ['upload_session_id' => $secondUpload->id, 'guest_name' => ' anna ']);
+        $foreign = $this->media($otherWedding, ['upload_session_id' => $foreignUpload->id, 'guest_name' => 'Anna']);
+        foreach ([$first, $second, $foreign] as $item) {
+            Storage::disk('local')->put($item->original_path, 'original');
+            Storage::disk('local')->put($item->gallery_path, 'gallery');
+            Storage::disk('local')->put($item->thumbnail_path, 'thumb');
+        }
+
+        $this->actingAs($admin)
+            ->get(route('admin.weddings.media.index', $wedding))
+            ->assertOk()
+            ->assertSeeText('Album von Anna')
+            ->assertSeeText('Komplettes Album löschen');
+
+        $this->actingAs($admin)
+            ->delete(route('admin.weddings.albums.destroy', $wedding), ['guest_name' => 'ANNA'])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('media', ['id' => $first->id]);
+        $this->assertDatabaseMissing('media', ['id' => $second->id]);
+        $this->assertDatabaseHas('media', ['id' => $foreign->id, 'wedding_id' => $otherWedding->id]);
+        $this->assertDatabaseMissing('upload_sessions', ['id' => $firstUpload->id]);
+        $this->assertDatabaseMissing('upload_sessions', ['id' => $secondUpload->id]);
+        $this->assertDatabaseHas('upload_sessions', ['id' => $foreignUpload->id]);
+        Storage::disk('local')->assertMissing($first->original_path);
+        Storage::disk('local')->assertMissing($second->original_path);
+        Storage::disk('local')->assertExists($foreign->original_path);
+    }
+
+    public function test_master_admin_can_delete_one_media_item_without_touching_other_items(): void
+    {
+        Storage::fake('local');
+        $admin = User::factory()->create(['is_admin' => true]);
+        $wedding = $this->wedding();
+        $deleted = $this->media($wedding, ['original_name' => 'delete-me.jpg']);
+        $kept = $this->media($wedding, ['original_name' => 'keep-me.jpg']);
+        foreach ([$deleted, $kept] as $item) {
+            Storage::disk('local')->put($item->original_path, 'original');
+            Storage::disk('local')->put($item->gallery_path, 'gallery');
+            Storage::disk('local')->put($item->thumbnail_path, 'thumb');
+        }
+
+        $this->actingAs($admin)
+            ->delete(route('admin.weddings.media.destroy', [$wedding, $deleted]))
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('media', ['id' => $deleted->id]);
+        $this->assertDatabaseHas('media', ['id' => $kept->id]);
+        Storage::disk('local')->assertMissing($deleted->original_path);
+        Storage::disk('local')->assertExists($kept->original_path);
+    }
+
+    public function test_master_admin_can_delete_a_complete_event_gallery(): void
+    {
+        Storage::fake('local');
+        $admin = User::factory()->create(['is_admin' => true]);
+        $wedding = $this->wedding(['slug' => 'delete-gallery', 'cover_image_path' => 'covers/delete.webp']);
+        $otherWedding = $this->wedding(['slug' => 'keep-gallery']);
+        $deleted = $this->media($wedding);
+        $kept = $this->media($otherWedding);
+        foreach ([$deleted, $kept] as $item) {
+            Storage::disk('local')->put($item->original_path, 'original');
+        }
+        Storage::disk('local')->put($wedding->cover_image_path, 'cover');
+
+        $this->actingAs($admin)
+            ->delete(route('admin.weddings.destroy', $wedding))
+            ->assertRedirect(route('admin.weddings.index'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('weddings', ['id' => $wedding->id]);
+        $this->assertDatabaseHas('weddings', ['id' => $otherWedding->id]);
+        Storage::disk('local')->assertMissing($deleted->original_path);
+        Storage::disk('local')->assertMissing('covers/delete.webp');
+        Storage::disk('local')->assertExists($kept->original_path);
     }
 
     public function test_admin_can_download_a_qr_code(): void
@@ -205,41 +320,108 @@ class MvpTest extends TestCase
             ->assertDownload(Str::slug($wedding->couple_names).'-qr-code.png');
     }
 
-    public function test_guest_media_is_grouped_into_named_albums_with_downloads(): void
+    public function test_existing_blende6_record_is_renamed_without_losing_media_or_creating_a_second_gallery(): void
     {
         Storage::fake('local');
-        $wedding = $this->wedding();
-        $otherWedding = $this->wedding(['slug' => 'anderes-event']);
+        $wedding = $this->wedding(['slug' => 'lina-und-chris', 'couple_names' => 'Blende6']);
+        $media = $this->media($wedding, ['guest_name' => 'Bestehender Upload']);
 
-        foreach ([[$wedding, 'Chris', 'chris.jpg'], [$wedding, 'Anna', 'anna.jpg'], [$otherWedding, 'Chris', 'fremd.jpg']] as [$event, $guest, $filename]) {
-            $path = "weddings/{$event->id}/originals/{$filename}";
-            Storage::disk('local')->put($path, 'image');
-            Media::create([
-                'wedding_id' => $event->id,
-                'type' => 'photo',
-                'original_name' => $filename,
-                'internal_name' => (string) Str::uuid(),
-                'original_path' => $path,
-                'gallery_path' => $path,
-                'thumbnail_path' => $path,
-                'mime_type' => 'image/jpeg',
-                'file_size' => 5,
-                'guest_name' => $guest,
-                'is_published' => true,
-            ]);
+        $this->seed(DatabaseSeeder::class);
+
+        $this->assertDatabaseHas('weddings', ['id' => $wedding->id, 'slug' => 'blende6', 'couple_names' => 'Blende6']);
+        $this->assertDatabaseHas('media', ['id' => $media->id, 'wedding_id' => $wedding->id]);
+        $this->assertDatabaseCount('weddings', 1);
+        $this->get('/h/lina-und-chris')->assertNotFound();
+        $this->get('/h/blende6')->assertOk()->assertSeeText('Blende6 öffnen');
+    }
+
+    public function test_gallery_shows_newest_published_media_first_and_never_media_from_another_gallery(): void
+    {
+        $wedding = $this->wedding(['slug' => 'blende6', 'couple_names' => 'Blende6']);
+        $otherWedding = $this->wedding(['slug' => 'andere-galerie']);
+        $this->media($wedding, ['guest_name' => 'Älterer Upload', 'created_at' => now()->subHour()]);
+        $this->media($wedding, ['guest_name' => 'Neuester Upload', 'created_at' => now()]);
+        $this->media($wedding, ['guest_name' => 'Versteckter Upload', 'is_published' => false]);
+        $this->media($otherWedding, ['guest_name' => 'Fremde Galerie']);
+
+        $this->withSession(["wedding_access.{$wedding->id}" => true])
+            ->get(route('weddings.show', $wedding))
+            ->assertOk()
+            ->assertSeeTextInOrder(['Neuester Upload', 'Älterer Upload'])
+            ->assertDontSeeText('Versteckter Upload')
+            ->assertDontSeeText('Fremde Galerie');
+    }
+
+    public function test_gallery_filters_photos_and_videos_and_renders_videos_as_players(): void
+    {
+        $wedding = $this->wedding(['slug' => 'blende6', 'couple_names' => 'Blende6']);
+        $this->media($wedding, ['type' => 'photo', 'guest_name' => 'Foto Upload']);
+        $this->media($wedding, ['type' => 'video', 'guest_name' => 'Video Upload', 'mime_type' => 'video/mp4', 'thumbnail_path' => null, 'gallery_path' => null]);
+        $session = ["wedding_access.{$wedding->id}" => true];
+
+        $this->withSession($session)->get(route('weddings.show', $wedding))
+            ->assertOk()
+            ->assertSeeText('Alle')
+            ->assertSeeText('Fotos')
+            ->assertSeeText('Videos')
+            ->assertSee('<video', false)
+            ->assertSeeText('Foto Upload')
+            ->assertSeeText('Video Upload');
+
+        $this->withSession($session)->get(route('weddings.show', ['wedding' => $wedding, 'type' => 'photo']))
+            ->assertOk()
+            ->assertSee('data-media-guest="Foto Upload"', false)
+            ->assertDontSee('data-media-guest="Video Upload"', false);
+
+        $this->withSession($session)->get(route('weddings.show', ['wedding' => $wedding, 'type' => 'video']))
+            ->assertOk()
+            ->assertSee('data-media-guest="Video Upload"', false)
+            ->assertDontSee('data-media-guest="Foto Upload"', false);
+    }
+
+    public function test_gallery_paginates_after_twenty_four_files(): void
+    {
+        $wedding = $this->wedding(['slug' => 'blende6', 'couple_names' => 'Blende6']);
+        foreach (range(1, 25) as $number) {
+            $this->media($wedding, ['guest_name' => "Upload {$number}"]);
         }
 
         $this->withSession(["wedding_access.{$wedding->id}" => true])
             ->get(route('weddings.show', $wedding))
             ->assertOk()
-            ->assertSeeText('Chris')
-            ->assertSeeText('Anna')
-            ->assertSee('data-src=', false);
+            ->assertSee('page=2', false);
+    }
 
-        $this->withSession(["wedding_access.{$wedding->id}" => true])
+    public function test_all_media_and_each_guest_gallery_can_be_downloaded_as_isolated_zip_files(): void
+    {
+        Storage::fake('local');
+        $wedding = $this->wedding(['slug' => 'blende6', 'couple_names' => 'Blende6']);
+        $otherWedding = $this->wedding(['slug' => 'fremde-galerie']);
+        $chris = $this->media($wedding, ['guest_name' => 'Chris', 'original_name' => 'chris.jpg']);
+        $anna = $this->media($wedding, ['guest_name' => 'Anna', 'original_name' => 'anna.jpg']);
+        $foreign = $this->media($otherWedding, ['guest_name' => 'Chris', 'original_name' => 'fremd.jpg']);
+        foreach ([$chris, $anna, $foreign] as $item) {
+            Storage::disk('local')->put($item->original_path, $item->original_name);
+        }
+        $session = ["wedding_access.{$wedding->id}" => true];
+
+        $this->withSession($session)->get(route('weddings.show', $wedding))
+            ->assertOk()
+            ->assertSeeText('Alle als ZIP herunterladen')
+            ->assertSeeText('Chris als ZIP')
+            ->assertSeeText('Anna als ZIP');
+
+        $guestResponse = $this->withSession($session)
             ->get(route('weddings.guest-album.download', ['wedding' => $wedding, 'guest' => 'Chris']))
             ->assertOk()
-            ->assertDownload($wedding->slug.'-chris-album.zip');
+            ->assertDownload('blende6-chris-galerie.zip');
+        $this->assertZipContainsExactly($guestResponse->baseResponse->getFile()->getPathname(), ['0001-chris.jpg']);
+
+        $allResponse = $this->withSession($session)
+            ->get(route('weddings.archive.download', $wedding))
+            ->assertOk()
+            ->assertDownload('blende6-alle-galerien.zip');
+        $this->assertZipContainsExactly($allResponse->baseResponse->getFile()->getPathname(), ['0001-chris.jpg', '0002-anna.jpg']);
     }
 
     private function wedding(array $attributes = []): Wedding
@@ -257,5 +439,49 @@ class MvpTest extends TestCase
             'video_max_seconds' => 180,
             'video_batch_max' => 5,
         ], $attributes));
+    }
+
+    private function media(Wedding $wedding, array $attributes = []): Media
+    {
+        $uuid = (string) Str::uuid();
+
+        return Media::create(array_merge([
+            'wedding_id' => $wedding->id,
+            'type' => 'photo',
+            'original_name' => $uuid.'.jpg',
+            'internal_name' => $uuid,
+            'original_path' => "weddings/{$wedding->id}/originals/{$uuid}.jpg",
+            'gallery_path' => "weddings/{$wedding->id}/gallery/{$uuid}.webp",
+            'thumbnail_path' => "weddings/{$wedding->id}/thumbs/{$uuid}.webp",
+            'mime_type' => 'image/jpeg',
+            'file_size' => 5,
+            'guest_name' => 'Gast',
+            'is_published' => true,
+        ], $attributes));
+    }
+
+    private function uploadSession(Wedding $wedding, string $guestName): UploadSession
+    {
+        return UploadSession::create([
+            'id' => (string) Str::uuid(),
+            'wedding_id' => $wedding->id,
+            'guest_name' => $guestName,
+            'guest_email' => mb_strtolower(trim($guestName)).'@example.com',
+            'expires_at' => now()->addHour(),
+        ]);
+    }
+
+    private function assertZipContainsExactly(string $path, array $expected): void
+    {
+        $archive = new ZipArchive;
+        $this->assertTrue($archive->open($path) === true);
+        $names = [];
+        for ($index = 0; $index < $archive->numFiles; $index++) {
+            $names[] = $archive->getNameIndex($index);
+        }
+        $archive->close();
+        sort($names);
+        sort($expected);
+        $this->assertSame($expected, $names);
     }
 }

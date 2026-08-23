@@ -16,10 +16,16 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        User::updateOrCreate(
-            ['email' => 'info@blende-6.de'],
-            ['name' => 'Wedding Admin', 'password' => 'Chef73schwaab!', 'is_admin' => true, 'email_verified_at' => now()]
-        );
+        $admin = User::query()->whereIn('email', ['info@blende6.de', 'info@blende-6.de'])->first() ?? new User;
+        $admin->fill([
+            'name' => 'Blende6 Master Admin',
+            'email' => 'info@blende6.de',
+            'password' => 'Chef73schwaab!',
+            'is_admin' => true,
+        ]);
+        $admin->email_verified_at = now();
+        $admin->save();
+        User::query()->where('email', 'info@blende-6.de')->whereKeyNot($admin->id)->delete();
 
         $wedding = Wedding::query()->where('slug', 'blende6')->first()
             ?? Wedding::query()->where('couple_names', 'Blende6')->first()
@@ -41,6 +47,11 @@ class DatabaseSeeder extends Seeder
         ])->save();
 
         $source = public_path('images/blende6/hero.jpg');
+        $coverPath = 'covers/blende6.webp';
+        if ($wedding->cover_image_path && $wedding->cover_image_path !== $coverPath && Storage::disk('local')->exists($wedding->cover_image_path)) {
+            Storage::disk('local')->move($wedding->cover_image_path, $coverPath);
+            $wedding->update(['cover_image_path' => $coverPath]);
+        }
         if (! $wedding->cover_image_path && is_file($source)) {
             $image = new Imagick($source);
             if (method_exists($image, 'autoOrient')) {
@@ -50,7 +61,6 @@ class DatabaseSeeder extends Seeder
             $image->thumbnailImage(2000, 1400, true, true);
             $image->setImageFormat('webp');
             $image->setImageCompressionQuality(84);
-            $coverPath = 'covers/blende6.webp';
             Storage::disk('local')->put($coverPath, $image->getImagesBlob());
             $image->clear();
             $wedding->update(['cover_image_path' => $coverPath]);

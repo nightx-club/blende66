@@ -19,7 +19,7 @@ class EnsureWeddingAccess
             return $next($request);
         }
         if (! (bool) $request->session()->get("wedding_access.{$wedding->id}", false)) {
-            return redirect()->route('weddings.show', $wedding)->with('error', 'Bitte gebt zuerst die Hochzeits-PIN ein.');
+            return redirect()->route('weddings.show', $wedding)->with('error', 'Bitte gebt zuerst die Galerie-PIN ein.');
         }
 
         return $next($request);

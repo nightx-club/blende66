@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Wedding;
+use App\Services\MediaCleaner;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -57,6 +58,16 @@ class WeddingController extends Controller
         $wedding->update($data);
 
         return back()->with('success', 'Änderungen wurden gespeichert.');
+    }
+
+    public function destroy(Wedding $wedding, MediaCleaner $cleaner): RedirectResponse
+    {
+        $name = $wedding->couple_names;
+        $wedding->media()->get()->each(fn ($media) => $cleaner->delete($media));
+        Storage::disk('local')->delete($wedding->cover_image_path);
+        $wedding->delete();
+
+        return redirect()->route('admin.weddings.index')->with('success', "Die Galerie {$name} wurde dauerhaft gelöscht.");
     }
 
     private function validated(Request $request, ?Wedding $wedding = null): array

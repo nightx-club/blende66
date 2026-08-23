@@ -19,6 +19,7 @@
                 <a href="{{ route('admin.weddings.edit', $wedding) }}" class="rounded-full border border-[#bbc2b8] px-4 py-2.5 text-[#52604f]">Bearbeiten</a>
                 <a href="{{ route('admin.weddings.qr.download', $wedding) }}" class="rounded-full border border-[#bbc2b8] px-4 py-2.5 text-[#52604f]">↓ QR-Code</a>
                 <a href="{{ route('weddings.show', $wedding) }}" target="_blank" class="rounded-full px-4 py-2.5 text-[#6f786e]">Gastseite ↗</a>
+                <form method="POST" action="{{ route('admin.weddings.destroy', $wedding) }}" class="ml-auto">@csrf @method('DELETE')<button onclick="return confirm(@js('Die komplette Galerie '.$wedding->couple_names.' mit allen Dateien dauerhaft löschen?'))" class="rounded-full px-4 py-2.5 text-[#a24e44]">Galerie löschen</button></form>
             </div>
         </article>
     @empty

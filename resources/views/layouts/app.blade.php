@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#f6f0e7">
     @isset($description)<meta name="description" content="{{ $description }}">@endisset
-    <title>{{ $title ?? 'Wedding Moments' }}</title>
+    <title>{{ $title ?? 'Blende6' }}</title>
     <link rel="icon" type="image/png" href="{{ asset('images/blende6-logo.png') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>

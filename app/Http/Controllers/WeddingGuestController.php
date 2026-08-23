@@ -22,6 +22,7 @@ class WeddingGuestController extends Controller
 
         $mediaPage = null;
         $media = collect();
+        $guestGalleries = collect();
         $counts = ['all' => 0, 'photo' => 0, 'video' => 0];
 
         if ($unlocked) {
@@ -31,6 +32,14 @@ class WeddingGuestController extends Controller
                 'photo' => (clone $published)->where('type', 'photo')->count(),
                 'video' => (clone $published)->where('type', 'video')->count(),
             ];
+            $guestGalleries = $wedding->media()
+                ->where('is_published', true)
+                ->whereNotNull('guest_name')
+                ->where('guest_name', '!=', '')
+                ->selectRaw('MIN(guest_name) as name, COUNT(*) as files_count')
+                ->groupByRaw('LOWER(TRIM(guest_name))')
+                ->orderBy('name')
+                ->get();
             $query = $wedding->media()->where('is_published', true);
             if ($filter !== 'all') {
                 $query->where('type', $filter);
@@ -39,7 +48,7 @@ class WeddingGuestController extends Controller
             $media = $mediaPage->getCollection();
         }
 
-        return view('guest.gallery', compact('wedding', 'unlocked', 'media', 'mediaPage', 'counts', 'filter'));
+        return view('guest.gallery', compact('wedding', 'unlocked', 'media', 'mediaPage', 'counts', 'filter', 'guestGalleries'));
     }
 
     public function unlock(Request $request, Wedding $wedding): RedirectResponse
